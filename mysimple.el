@@ -71,12 +71,15 @@
   (end-of-line))
 
 ;; Mode hooks
+(require 'cython-mode)
 (setq auto-mode-alist
       (append 
        '(("\\.h\\'" . c++-mode)
 	 ("\\.lex\\'" . c++-mode)
 	 ("emacs" . emacs-lisp-mode)
-         ("\\.py.*\\'" . python-mode)
+         ("\\.py\\'" . python-mode)
+         ("\\.pyx\\'" . cython-mode)
+         ("\\.pyxbld\\'" . python-mode)
          ("\\.m\\'" . octave-mode))
        auto-mode-alist))
 
@@ -407,15 +410,25 @@ unless called with a prefix argument."
 (setq recentf-max-menu-items 25)
 
 
+
 (require 'package)
 (add-to-list 'package-archives
   '("melpa" . "http://melpa.milkbox.net/packages/") t)
+(add-to-list 'package-archives
+             '(("ELPA" . "http://tromey.com/elpa/")
+               ("gnu" . "http://elpa.gnu.org/packages/")
+               ("marmalade" . "http://marmalade-repo.org/packages/")))
 
 ;; Configure flycheck for Python
-(set-variable 
+(set-variable 'flycheck-python-flake8-executable "/usr/local/bin/flake8")
 (add-hook 'python-mode-hook '(lambda () (flycheck-mode)))
 (set-variable 'flycheck-display-errors-display 0.1)
 (define-key python-mode-map (kbd "TAB") 'smart-tab)
 (define-key python-mode-map (kbd "C-c C-n") 'flycheck-next-error)
 (define-key python-mode-map (kbd "C-c C-p") 'flycheck-previous-error)
-(set-variable flycheck-python-flake8-executable "/usr/local/bin/flake8")
+
+
+(setq visible-bell nil)
+(setq ring-bell-function (lambda ()
+                           (invert-face 'mode-line)
+                           (run-with-timer 0.1 nil 'invert-face 'mode-line)))

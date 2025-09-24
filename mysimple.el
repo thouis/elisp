@@ -1,6 +1,8 @@
 (load-library "cl")
 
-(if (> (string-to-number emacs-version) 18) (progn (menu-bar-mode -1)))
+; breaks mac
+;;(if (> (string-to-number emacs-version) 18) (progn (menu-bar-mode -1)))
+
 (if (and (>= (string-to-number emacs-version) 21) (fboundp 'tool-bar-mode)) (tool-bar-mode -1))
 
 
@@ -41,7 +43,7 @@
 (defun new-c-file-header ()
   (insert "/* " (buffer-name) " - */")
   (newline) (newline)
-  (not-modified))
+  (set-buffer-modified-p nil))
 
 ;; Start C++ mode
 (defun start-c++-mode ()
@@ -73,11 +75,15 @@
 ;; Mode hooks
 (setq auto-mode-alist
       (append 
-       '(("\\.h\\'" . c++-mode)
-	 ("\\.lex\\'" . c++-mode)
+       '(("\\.h$" . c++-mode)
+	 ("\\.lex$" . c++-mode)
 	 ("emacs" . emacs-lisp-mode)
-         ("\\.py.*\\'" . python-mode)
-         ("\\.m\\'" . octave-mode))
+         ("\\.el$" . emacs-lisp-mode)
+         ("\\.py.*$" . python-mode)
+         ("\\.m$" . octave-mode)
+         ("Snakefile*" . snakemake-mode)
+         ("\\.R$" . R-mode)
+         ("\\.r$" . R-mode))
        auto-mode-alist))
 
 (setq major-mode 'text-mode)
@@ -130,6 +136,8 @@
 (global-set-key "\M-[B" 'next-line)         ; down-arrow - SUN
 (global-set-key "\M-[C" 'forward-char)      ; right-arrow - SUN
 (global-set-key "\M-[D" 'backward-char)     ; left-arrow - SUN
+
+(global-set-key "\M-`" 'next-multiframe-window)
 
 ;;search backwards, blink the match, then move back to where we were.
 (defun my-show-match ()
@@ -208,10 +216,10 @@
 
 
 (define-key minibuffer-local-must-match-map "\040" 'minibuffer-complete)
-(define-key minibuffer-local-must-match-map "\011" 'minibuffer-complete-word)
+(define-key minibuffer-local-must-match-map "\011" 'minibuffer-complete)
 (define-key minibuffer-local-completion-map "\040" 'minibuffer-complete)
-(define-key minibuffer-local-completion-map "\011" 'minibuffer-complete-word)
-(define-key minibuffer-local-filename-completion-map " " 'minibuffer-complete-word)
+(define-key minibuffer-local-completion-map "\011" 'minibuffer-complete)
+(define-key minibuffer-local-filename-completion-map " " 'minibuffer-complete)
 
 ;; this is from examples in advice.el
 ;; advice is 4leet, i must read more about it.
@@ -365,19 +373,17 @@ unless called with a prefix argument."
 ;; flyspell
 (setq-default ispell-program-name "/usr/local/bin/aspell")
 
-;; editwithemacs
-(require 'edit-server)
-(edit-server-start)
-
 (setq resize-mini-windows t
       max-mini-window-height .85)
 
-(setenv "VIRTUAL_ENV" "/Users/tjones/VENV")
+(setenv "VIRTUAL_ENV" "/Users/thouis/VENV36")
 (setenv "PYTHONHOME")
 
 (require 'python)
 
 (require 'column-marker)
+
+(autoload 'snakemake-mode "snakemake" "Snakemake mode" t nil)
 
 (defun smart-tab ()
       "This smart tab is minibuffer compliant: it acts as usual in
@@ -402,20 +408,71 @@ unless called with a prefix argument."
       (indent-for-tab-command)
     ad-do-it))
 
-(require 'recentf)
-(recentf-mode 1)
-(setq recentf-max-menu-items 25)
-
-
-(require 'package)
-(add-to-list 'package-archives
-  '("melpa" . "http://melpa.milkbox.net/packages/") t)
-
 ;; Configure flycheck for Python
-(set-variable 
 (add-hook 'python-mode-hook '(lambda () (flycheck-mode)))
 (set-variable 'flycheck-display-errors-display 0.1)
 (define-key python-mode-map (kbd "TAB") 'smart-tab)
 (define-key python-mode-map (kbd "C-c C-n") 'flycheck-next-error)
 (define-key python-mode-map (kbd "C-c C-p") 'flycheck-previous-error)
-(set-variable flycheck-python-flake8-executable "/usr/local/bin/flake8")
+(set-variable 'flycheck-python-flake8-executable "/Users/thouis/VENV39/bin/flake8")
+(setq flycheck-flake8-maximum-line-length 120)
+
+
+(setq yow-file "~/elisp/yow_file_zippy_pinhead_quotes.txt.gz")
+
+(require 'tramp)
+;; (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
+;; TRAMP gcloud ssh
+(add-to-list 'tramp-methods
+  '("gssh"
+    (tramp-login-program        "/usr/local/bin/gssh")
+    (tramp-login-args           (("%u") ("%h")))
+    (tramp-async-args           (("-q")))
+    (tramp-remote-shell         "/bin/sh")
+    (tramp-remote-shell-args    ("-c"))
+    (tramp-gw-args              (("-o" "GlobalKnownHostsFile=/dev/null")
+                                 ("-o" "UserKnownHostsFile=/dev/null")
+                                 ("-o" "StrictHostKeyChecking=no")))
+    (tramp-default-port         22)))
+;; speed up tramp
+(setq tramp-completion-reread-directory-timeout 600)
+
+;; recent files
+;; must be below the tramp setup for gssh
+(require 'recentf)
+(recentf-mode 1)
+(setq recentf-max-menu-items 50)
+(setq recentf-max-saved-items 50)
+(global-set-key "\C-x\ \C-r" 'recentf-open-files)
+(run-at-time nil (* 5 60) 'recentf-save-list)
+
+(defun unwrap-line ()
+      "Remove all newlines until we get to two consecutive ones.
+    Or until we reach the end of the buffer.
+    Great for unwrapping quotes before sending them on IRC."
+      (interactive)
+      (let ((start (point))
+            (end (copy-marker (or (search-forward "\n\n" nil t)
+                                  (point-max))))
+            (fill-column (point-max)))
+        (fill-region start end)
+        (goto-char end)
+        (newline)
+        (goto-char start)))
+
+
+;;; multi-mode for editing html/js
+(require 'web-mode)
+(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.[agj]sp\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.as[cp]x\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.erb\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.mustache\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.djhtml\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+
+;; Indentation for web-mode.el
+(setq web-mode-markup-indent-offset 2)
+(setq web-mode-css-indent-offset 2)
+(setq web-mode-code-indent-offset 2)

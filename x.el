@@ -1,14 +1,16 @@
 (setq mouse-yank-at-point nil)
 
+(scroll-bar-mode -1)
+
 (global-set-key [wheel-down] (lambda () (interactive) (scroll-up 1)))
 (global-set-key [wheel-up] (lambda () (interactive) (scroll-down 1)))
 
 (setq default-frame-alist
       (append
-       `((mouse-color . "blue")
+       `((mouse-color . "white")
          (foreground-color . "white")
          (background-color . "#151515")
-         (font . "-apple-Inconsolata-regular-normal-normal-mono-15-*-*-*-m-0-iso10646-1")
+         (font . "-*-Inconsolata-*-normal-normal-mono-15-*-*-*-m-0-iso10646-1")
          (cursor-color . "red"))
        default-frame-alist))
 (set-face-foreground 'mode-line "black")
